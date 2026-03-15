@@ -1,0 +1,2 @@
+# cinematic
+cinema automation project
