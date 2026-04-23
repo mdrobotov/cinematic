@@ -68,4 +68,3 @@ CREATE INDEX idx_sessions_movie_id ON Sessions(movie_id);
 
 -- для связи билетов с сеансами
 CREATE INDEX idx_tickets_session_id ON Tickets(session_id);
-
