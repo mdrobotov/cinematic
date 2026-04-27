@@ -1,5 +1,0 @@
-<?php
-
-echo "api.php";
-
-?>

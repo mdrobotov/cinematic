@@ -1,0 +1,32 @@
+body {
+    margin: 20px;
+}
+.container {
+    max-width: 1200px;
+    margin: auto;
+}
+.menu button {
+    margin: 5px;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+th, td {
+    border: 1px solid #ccc;
+    padding: 6px;
+    text-align: left;
+}
+.pagination {
+    margin-top: 10px;
+}
+.pagination button {
+    margin: 2px;
+    padding: 4px 8px;
+}
+.error {
+    color: red;
+}
