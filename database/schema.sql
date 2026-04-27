@@ -150,35 +150,43 @@ BEGIN
       AND NEW.status IN ('sold', 'booked');
 END;
 
--- Тестовые данные
+-- Тестовые данные для таблицы Movies
 INSERT INTO Movies (title, description, duration_minutes, age_rating, release_date, genre, is_active) VALUES
 ('Дюна 2', 'Очень интересно', 166, 12, '2024-03-01', 'Научная фантастика', 1),
 ('Вот это драма!', 'Очень смешно', 105, 18, '2026-04-09', 'Романтическая комедия', 1),
 ('Брат', 'Очень по-русски', 96, 18, '1997-05-17', 'Криминальная драма', 0);
 
+-- Тестовые данные для таблицы Halls
 INSERT INTO Halls (hall_number, total_seats, hall_type) VALUES
 ('Зал 1', 50, 'Standard'),
 ('Зал 2', 30, 'VIP');
 
-INSERT INTO Seats (hall_id, row_number, seat_number) 
-SELECT 1, r, s
-FROM (SELECT 1 as r UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5) r,
-     (SELECT 1 as s UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10) s;
+-- Тестовые данные для первого зала таблицы Seats
+WITH RECURSIVE
+  rows(r) AS (SELECT 1 UNION ALL SELECT r + 1 FROM rows WHERE r < 5),
+  seats(s) AS (SELECT 1 UNION ALL SELECT s + 1 FROM seats WHERE s < 10)
+INSERT INTO Seats (hall_id, row_number, seat_number)
+SELECT 1, r, s FROM rows, seats;
 
-INSERT INTO Seats (hall_id, row_number, seat_number) 
-SELECT 2, r, s
-FROM (SELECT 1 as r UNION SELECT 2 UNION SELECT 3) r,
-     (SELECT 1 as s UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7 UNION SELECT 8 UNION SELECT 9 UNION SELECT 10) s;
+-- Тестовые данные для второго зала таблицы Seats
+WITH RECURSIVE
+  rows(r) AS (SELECT 1 UNION ALL SELECT r + 1 FROM rows WHERE r < 3),
+  seats(s) AS (SELECT 1 UNION ALL SELECT s + 1 FROM seats WHERE s < 10)
+INSERT INTO Seats (hall_id, row_number, seat_number)
+SELECT 2, r, s FROM rows, seats;
 
+-- Тестовые данные для таблицы Sessions
 INSERT INTO Sessions (movie_id, hall_id, start_time, end_time, base_price, available_seats)
-VALUES 
+VALUES
 (1, 1, '2025-05-01 18:00:00', '2025-05-01 20:46:00', 350, 50),
 (2, 2, '2025-05-02 19:00:00', '2025-05-02 20:54:00', 400, 30);
 
+-- Тестовые данные для таблицы Clients
 INSERT INTO Clients (first_name, last_name, email, phone) VALUES
-('Иван', 'Петров', 'ivan@test.com', '123456789'),
-('Мария', 'Сидорова', 'maria@test.com', '987654321');
+('Иван', 'Петров', 'ivan@test.com', '79097169213'),
+('Мария', 'Сидорова', 'maria@test.com', '79820963781');
 
+-- Тестовые данные для таблицы Tickets
 INSERT INTO Tickets (session_id, seat_id, client_id, price, status) VALUES
 (1, 1, 1, 350, 'sold'),
 (1, 2, 1, 350, 'sold'),
