@@ -34,6 +34,8 @@ class ApiHandler {
                     return $this->updateRecord();
                 case 'deleteRecord':
                     return $this->deleteRecord();
+                case 'addHallWithSeats':
+                    return $this->addHallWithSeats();
                 default:
                     throw new Exception("Неизвестный action: $action");
             }
@@ -187,6 +189,53 @@ class ApiHandler {
         $query = $this->db->prepare("DELETE FROM $table WHERE $pk = ?");
         $query->execute([$id]);
         return json_encode(['success' => true]);
+    }
+
+    private function addHallWithSeats() {
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true);
+
+        if (!$data)
+            throw new Exception("Нет данных для создания зала");
+
+        $hallNumber = $data['hall_number'] ?? '';
+        $hallType = $data['hall_type'] ?? 'Standard';
+        $description = $data['description'] ?? '';
+        $rows = (int)($data['rows'] ?? 0);
+        $seatsPerRow = (int)($data['seats_per_row'] ?? 0);
+
+        if (empty($hallNumber) || $rows <= 0 || $seatsPerRow <= 0)
+            throw new Exception("Неверные данные");
+
+        $totalSeats = $rows * $seatsPerRow;
+
+        $this->db->beginTransaction();
+        try {
+            // Вставка зала
+            $query = $this->db->prepare(
+                "INSERT INTO Halls (hall_number, total_seats, hall_type, description)
+                VALUES (?, ?, ?, ?)"
+            );
+            $query->execute([$hallNumber, $totalSeats, $hallType, $description]);
+            $hallId = $this->db->lastInsertId();
+            
+            // Вставка мест
+            $insertSeat = $this->db->prepare(
+                "INSERT INTO Seats (hall_id, row_number, seat_number, seat_type)
+                VALUES (?, ?, ?, 'Regular')"
+            );
+            for ($r = 1; $r <= $rows; $r++) {
+                for ($s = 1; $s <= $seatsPerRow; $s++) {
+                    $insertSeat->execute([$hallId, $r, $s]);
+                }
+            }
+            $this->db->commit();
+
+            return json_encode(['success' => true, 'hall_id' => $hallId]);
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
     }
 }
 

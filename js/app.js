@@ -1,26 +1,4 @@
 
-let currentTable = 'Movies';
-let currentPage = 1;
-
-const modal = document.getElementById('modal');
-const modalBody = document.getElementById('modal-body');
-const closeModal = document.querySelector('.close');
-
-closeModal.addEventListener('click', function() {
-    modal.style.display = 'none';
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('[data-table]').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            currentTable = btn.dataset.table;
-            currentPage = 1;
-            loadTable();
-        });
-    });
-    loadTable();
-});
-
 async function loadTable() {
     const params = `action=getTableData&table=${currentTable}&page=${currentPage}&limit=10`;
 
@@ -121,6 +99,25 @@ function renderTable(data, total) {
     if (addBtn) addBtn.addEventListener('click', function() { openAddForm(); });
 }
 
+async function saveRecord(data, id = null) {
+    const params = (id == null)
+        ? `action=insertRecord&table=${currentTable}`
+        : `action=updateRecord&table=${currentTable}&id=${id}`;
+
+    const response = await fetch(`api.php?${params}`, {
+        method: 'POST',
+        body: JSON.stringify(data)
+    });
+    const result = await response.json();
+
+    if (result.success) {
+        modal.style.display = 'none';
+        loadTable();
+    } else {
+        alert(`Ошибка: ${result.message}`);
+    }
+}
+
 async function getTableColumns() {
     const params = `action=getTableData&table=${currentTable}&page=1&limit=1`;
     const response = await fetch(`api.php?${params}`);
@@ -130,6 +127,18 @@ async function getTableColumns() {
     } else {
         return [];
     }
+}
+
+function getPrimaryKeyName() {
+    const map = {
+        'Movies': 'movie_id',
+        'Halls': 'hall_id',
+        'Seats': 'seat_id',
+        'Clients': 'client_id',
+        'Sessions': 'session_id',
+        'Tickets': 'ticket_id'
+    };
+    return map[currentTable] || 'id';
 }
 
 async function openAddForm() {
@@ -201,25 +210,6 @@ async function openEditForm(id) {
     });
 }
 
-async function saveRecord(data, id = null) {
-    const params = (id == null)
-        ? `action=insertRecord&table=${currentTable}`
-        : `action=updateRecord&table=${currentTable}&id=${id}`;
-
-    const response = await fetch(`api.php?${params}`, {
-        method: 'POST',
-        body: JSON.stringify(data)
-    });
-    const result = await response.json();
-
-    if (result.success) {
-        modal.style.display = 'none';
-        loadTable();
-    } else {
-        alert(`Ошибка: ${result.message}`);
-    }
-}
-
 async function deleteRecord(id) {
     if (!confirm('Удалить запись?'))
         return;
@@ -236,14 +226,85 @@ async function deleteRecord(id) {
     }
 }
 
-function getPrimaryKeyName() {
-    const map = {
-        'Movies': 'movie_id',
-        'Halls': 'hall_id',
-        'Seats': 'seat_id',
-        'Clients': 'client_id',
-        'Sessions': 'session_id',
-        'Tickets': 'ticket_id'
-    };
-    return map[currentTable] || 'id';
+function openAddHallForm() {
+    let html = `
+        <h2>Добавить зал с местами</h2>
+        <form id="hallForm">
+            <label>Номер зала (hall_number):</label><br>
+            <input type="text" name="hall_number" required><br>
+            <label>Тип зала (hall_type):</label><br>
+            <select name="hall_type">
+                <option value="Standard">Standard</option>
+                <option value="VIP">VIP</option>
+                <option value="IMAX">IMAX</option>
+            </select><br>
+            <label>Описание:</label><br>
+            <textarea name="description"></textarea><br>
+            <label>Количество рядов (rows):</label><br>
+            <input type="number" name="rows" min="1" required><br>
+            <label>Мест в ряду (seats_per_row):</label><br>
+            <input type="number" name="seats_per_row" min="1" required><br>
+            <br>
+            <button type="submit">Создать зал и места</button>
+        </form>
+    `;
+    modalBody.innerHTML = html;
+    modal.style.display = 'block';
+
+    document.getElementById('hallForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const obj = {};
+        for (let [key, val] of formData.entries())
+            obj[key] = val;
+
+        // Преобразуем числа
+        obj.rows = parseInt(obj.rows);
+        obj.seats_per_row = parseInt(obj.seats_per_row);
+
+        const response = await fetch('api.php?action=addHallWithSeats', {
+            method: 'POST',
+            body: JSON.stringify(obj)
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            modal.style.display = 'none';
+            // Если текущая таблица Halls, перезагружаем её
+            if (currentTable === 'Halls') {
+                loadTable();
+            } else {
+                alert('Зал и места созданы. Перейдите на таблицу "Залы", чтобы увидеть.');
+            }
+        } else {
+            alert('Ошибка: ' + result.message);
+        }
+    });
 }
+
+let currentTable = 'Movies';
+let currentPage = 1;
+
+const modal = document.getElementById('modal');
+const modalBody = document.getElementById('modal-body');
+const closeModal = document.querySelector('.close');
+const addHallBtn = document.getElementById('btnAddHallSeats');
+
+closeModal.addEventListener('click', function() {
+    modal.style.display = 'none';
+});
+
+addHallBtn.addEventListener('click',function() {
+    openAddHallForm();
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-table]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            currentTable = btn.dataset.table;
+            currentPage = 1;
+            loadTable();
+        });
+    });
+    loadTable();
+});
