@@ -5,17 +5,35 @@ require_once 'log.php';
 
 class ApiHandler {
     private $db;
+    private $allowedTables = [
+        'Movies',
+        'Halls',
+        'Seats',
+        'Clients',
+        'Sessions',
+        'Tickets'
+    ];
 
     public function __construct() {
         $this->db = Database::getConnection();
     }
 
     public function handle() {
-        $action = $_GET['action'] ?? '';
+        parse_str($_SERVER['QUERY_STRING'], $queryArgs);
+        $action = $queryArgs['action'] ?? '';
+
         try {
             switch ($action) {
                 case 'getTableData':
                     return $this->getTableData();
+                case 'getRecord':
+                    return $this->getRecord();
+                case 'insertRecord':
+                    return $this->insertRecord();
+                case 'updateRecord':
+                    return $this->updateRecord();
+                case 'deleteRecord':
+                    return $this->deleteRecord();
                 default:
                     throw new Exception("Неизвестный action: $action");
             }
@@ -29,15 +47,8 @@ class ApiHandler {
 
     private function getTableData() {
         $table = $_GET['table'] ?? '';
-        $allowed = [
-            'Movies',
-            'Halls',
-            'Seats',
-            'Clients',
-            'Sessions',
-            'Tickets'
-        ];
-        if (!in_array($table, $allowed))
+
+        if (!in_array($table, $this->allowedTables))
             throw new Exception("Недопустимая таблица");
 
         $page = (int)($_GET['page'] ?? 1);
@@ -83,6 +94,99 @@ class ApiHandler {
             'data' => $rows,
             'total' => $total
         ]);
+    }
+
+    // Вспомогательный метод для получения первичного ключа таблицы
+    private function getPrimaryKey($table) {
+        $query = $this->db->query("PRAGMA table_info($table)");
+        $cols = $query->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($cols as $col) {
+            if ($col['pk'])
+                return $col['name'];
+        }
+        return 'id';
+    }
+
+    private function getRecord() {
+        $table = $_GET['table'] ?? '';
+        $id = (int)($_GET['id'] ?? 0);
+
+        if (!in_array($table, $this->allowedTables) || $id <= 0)
+            throw new Exception("Неверный запрос");
+
+        $pk = $this->getPrimaryKey($table);
+        $query = $this->db->prepare("SELECT * FROM $table WHERE $pk = ?");
+        $query->execute([$id]);
+        $row = $query->fetch(PDO::FETCH_ASSOC);
+        if (!$row)
+            throw new Exception("Запись не найдена");
+
+        return json_encode(['success' => true, 'data' => $row]);
+    }
+
+    private function insertRecord() {
+        parse_str($_SERVER['QUERY_STRING'], $queryArgs);
+        $table = $queryArgs['table'] ?? '';
+
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true);
+
+        if (!in_array($table, $this->allowedTables) || empty($data))
+            throw new Exception("Неверные данные");
+
+        $columns = implode(',', array_keys($data));
+        $placeholders = ':' . implode(',:', array_keys($data));
+        $sql = "INSERT INTO $table ($columns) VALUES ($placeholders)";
+        $query = $this->db->prepare($sql);
+        foreach ($data as $k => $v) {
+            $query->bindValue(":$k", $v === '' ? null : $v);
+        }
+        $query->execute();
+        $newId = $this->db->lastInsertId();
+
+        return json_encode(['success' => true, 'id' => $newId]);
+    }
+
+    private function updateRecord() {
+        parse_str($_SERVER['QUERY_STRING'], $queryArgs);
+        $table = $queryArgs['table'] ?? '';
+        $id = (int)($queryArgs['id'] ?? 0);
+
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true);
+
+        if (!in_array($table, $this->allowedTables) || empty($data) || $id <= 0)
+            throw new Exception("Неверные данные");
+
+        $sets = [];
+        foreach ($data as $k => $v) {
+            $sets[] = "$k = :$k";
+        }
+
+        $pk = $this->getPrimaryKey($table);
+        $sql = "UPDATE $table SET " . implode(',', $sets) . " WHERE $pk = :id";
+        $query = $this->db->prepare($sql);
+
+        foreach ($data as $k => $v) {
+            $query->bindValue(":$k", $v === '' ? null : $v);
+        }
+
+        $query->bindValue(':id', $id);
+        $query->execute();
+        return json_encode(['success' => true]);
+    }
+
+    private function deleteRecord() {
+        $table = $_GET['table'] ?? '';
+        $id = (int)($_GET['id'] ?? 0);
+
+        if (!in_array($table, $this->allowedTables) || $id <= 0)
+            throw new Exception("Неверный запрос");
+
+        $pk = $this->getPrimaryKey($table);
+        $query = $this->db->prepare("DELETE FROM $table WHERE $pk = ?");
+        $query->execute([$id]);
+        return json_encode(['success' => true]);
     }
 }
 
