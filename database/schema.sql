@@ -178,8 +178,8 @@ SELECT 2, r, s FROM rows, seats;
 -- Тестовые данные для таблицы Sessions
 INSERT INTO Sessions (movie_id, hall_id, start_time, end_time, base_price, available_seats)
 VALUES
-(1, 1, '2025-05-01 18:00:00', '2025-05-01 20:46:00', 350, 50),
-(2, 2, '2025-05-02 19:00:00', '2025-05-02 20:54:00', 400, 30);
+(1, 1, '2025-07-01 18:00:00', '2025-07-01 20:46:00', 350, 50),
+(2, 2, '2025-07-02 19:00:00', '2025-07-02 20:54:00', 400, 30);
 
 -- Тестовые данные для таблицы Clients
 INSERT INTO Clients (first_name, last_name, email, phone) VALUES
@@ -187,7 +187,7 @@ INSERT INTO Clients (first_name, last_name, email, phone) VALUES
 ('Мария', 'Сидорова', 'maria@test.com', '79820963781');
 
 -- Тестовые данные для таблицы Tickets
-INSERT INTO Tickets (session_id, seat_id, client_id, price, status) VALUES
-(1, 1, 1, 350, 'sold'),
-(1, 2, 1, 350, 'sold'),
-(2, 51, 2, 400, 'sold');
+INSERT INTO Tickets (session_id, seat_id, client_id, price, purchase_date, status) VALUES
+(1, 1, 1, 350, '2025-07-01 17:30:00', 'sold'),
+(1, 2, 1, 350, '2025-07-01 17:31:00', 'sold'),
+(2, 51, 2, 400, '2025-07-02 18:55:00', 'sold');

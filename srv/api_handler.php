@@ -36,6 +36,12 @@ class ApiHandler {
                     return $this->deleteRecord();
                 case 'addHallWithSeats':
                     return $this->addHallWithSeats();
+                case 'getReport1':
+                    return $this->getReport1();
+                case 'getReport2':
+                    return $this->getReport2();
+                case 'getReport3':
+                    return $this->getReport3();
                 default:
                     throw new Exception("Неизвестный action: $action");
             }
@@ -236,6 +242,123 @@ class ApiHandler {
             $this->db->rollBack();
             throw $e;
         }
+    }
+
+    private function getReport1() {
+        $from = $_GET['date_from'] ?? date('Y-m-d', strtotime('-30 days'));
+        $to = $_GET['date_to'] ?? date('Y-m-d');
+        $sort = $_GET['sort'] ?? 'total_tickets';
+        $order = $_GET['order'] ?? 'DESC';
+        $allowedSort = ['hall_number', 'total_tickets', 'revenue'];
+
+        if (!in_array($sort, $allowedSort))
+            $sort = 'total_tickets';
+
+        $sql = "SELECT
+                h.hall_number,
+                COUNT(t.ticket_id) as total_tickets,
+                COALESCE(SUM(t.price), 0) as revenue
+            FROM Halls h
+            LEFT JOIN Sessions s ON h.hall_id = s.hall_id
+            LEFT JOIN Tickets t ON s.session_id = t.session_id AND t.status = 'sold'
+            WHERE date(t.purchase_date) BETWEEN :from AND :to OR t.ticket_id IS NULL
+            GROUP BY h.hall_id
+            ORDER BY $sort $order";
+
+        $query = $this->db->prepare($sql);
+        $query->execute([':from' => $from, ':to' => $to]);
+        $data = $query->fetchAll(PDO::FETCH_ASSOC);
+        $totalTickets = array_sum(array_column($data, 'total_tickets'));
+        $totalRevenue = array_sum(array_column($data, 'revenue'));
+
+        return json_encode([
+            'success' => true,
+            'data' => $data,
+            'totals' => [
+                'tickets' => $totalTickets,
+                'revenue' => $totalRevenue
+            ]
+        ]);
+    }
+
+    private function getReport2() {
+        $minTickets = (int)($_GET['min_tickets'] ?? 0);
+        $sort = $_GET['sort'] ?? 'tickets_sold';
+        $order = $_GET['order'] ?? 'DESC';
+        $allowedSort = ['title', 'tickets_sold', 'revenue'];
+
+        if (!in_array($sort, $allowedSort))
+            $sort = 'tickets_sold';
+
+        $sql = "SELECT
+                m.title,
+                COUNT(t.ticket_id) as tickets_sold,
+                COALESCE(SUM(t.price), 0) as revenue
+            FROM Movies m
+            LEFT JOIN Sessions s ON m.movie_id = s.movie_id
+            LEFT JOIN Tickets t ON s.session_id = t.session_id AND t.status = 'sold'
+        ";
+
+        $params = [];
+        if (!empty($_GET['genre']))
+        {
+            $sql .= " WHERE m.genre = :genre";
+            $params = [':genre' => $_GET['genre']];
+        }
+
+        $sql .= " GROUP BY m.movie_id
+            HAVING COUNT(t.ticket_id) >= " . $minTickets . "
+            ORDER BY $sort $order
+        ";
+
+        $query = $this->db->prepare($sql);
+        $query->execute($params);
+        $data = $query->fetchAll(PDO::FETCH_ASSOC);
+        $totalTickets = array_sum(array_column($data, 'tickets_sold'));
+        $totalRevenue = array_sum(array_column($data, 'revenue'));
+
+        return json_encode([
+            'success' => true,
+            'data' => $data,
+            'totals' => [
+                'tickets' => $totalTickets,
+                'revenue' => $totalRevenue
+            ]
+        ]);
+    }
+
+    private function getReport3() {
+        $from = $_GET['date_from'] ?? date('Y-m-d', strtotime('-30 days'));
+        $to = $_GET['date_to'] ?? date('Y-m-d');
+        $sort = $_GET['sort'] ?? 'purchase_date';
+        $order = $_GET['order'] ?? 'ASC';
+        $allowedSort = ['purchase_date', 'daily_revenue', 'tickets_count'];
+
+        if (!in_array($sort, $allowedSort))
+            $sort = 'purchase_date';
+
+        $sql = "SELECT
+                date(t.purchase_date) as purchase_date,
+                COUNT(t.ticket_id) as tickets_count,
+                COALESCE(SUM(t.price), 0) as daily_revenue
+            FROM Tickets t
+            WHERE t.status = 'sold' AND date(t.purchase_date) BETWEEN :from AND :to
+            GROUP BY date(t.purchase_date)
+            ORDER BY $sort $order";
+        $query = $this->db->prepare($sql);
+        $query->execute([':from' => $from, ':to' => $to]);
+        $data = $query->fetchAll(PDO::FETCH_ASSOC);
+        $totalTickets = array_sum(array_column($data, 'tickets_count'));
+        $totalRevenue = array_sum(array_column($data, 'daily_revenue'));
+
+        return json_encode([
+            'success' => true,
+            'data' => $data,
+            'totals' => [
+                'tickets' => $totalTickets,
+                'revenue' => $totalRevenue
+            ]
+        ]);
     }
 }
 

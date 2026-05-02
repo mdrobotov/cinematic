@@ -63,7 +63,7 @@ function renderTable(data, total) {
     if (totalPages > 1) {
         html += '<div class="pagination">';
         for (let i = 1; i <= totalPages; i++) {
-            if (i === currentPage)
+            if (i == currentPage)
                 html += `<button disabled>${i}</button>`;
             else
                 html += `<button class="page-btn" data-page="${i}">${i}</button>`;
@@ -148,7 +148,7 @@ async function openAddForm() {
 
     for (let i = 0; i < columns.length; i++) {
         const col = columns[i];
-        if (col === pkName)
+        if (col == pkName)
             continue;
         html += `<label>${col}:</label><br>
             <input type="text" name="${col}" placeholder="Введите знаечние">
@@ -185,7 +185,7 @@ async function openEditForm(id) {
     for (let i = 0; i < columns.length; i++) {
         const col = columns[i];
         const val = data[col] ?? '';
-        if (col === pkName) {
+        if (col == pkName) {
             html += `<label>${col}:</label><br>
                 ${val}
             <br>`;
@@ -271,7 +271,7 @@ function openAddHallForm() {
         if (result.success) {
             modal.style.display = 'none';
             // Если текущая таблица Halls, перезагружаем её
-            if (currentTable === 'Halls') {
+            if (currentTable == 'Halls') {
                 loadTable();
             } else {
                 alert('Зал и места созданы. Перейдите на таблицу "Залы", чтобы увидеть.');
@@ -280,6 +280,144 @@ function openAddHallForm() {
             alert('Ошибка: ' + result.message);
         }
     });
+}
+
+function getToday() {
+    const d = new Date();
+    return d.toISOString().slice(0, 10);
+}
+function getDefaultDateFrom() {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 1);
+    return d.toISOString().slice(0, 10);
+}
+
+function showReportForm(method) {
+    let html = '';
+    if (method == 'getReport1') {
+        html = `
+            <h2>Отчёт 1: Загрузка залов за период</h2>
+            <form id="reportForm">
+                <label>Дата с:</label><br>
+                <input type="date" name="date_from" value="${getDefaultDateFrom()}"><br>
+                <label>Дата по:</label><br>
+                <input type="date" name="date_to" value="${getToday()}"><br>
+                <label>Сортировать по:</label><br>
+                <select name="sort">
+                    <option value="total_tickets">Количество билетов</option>
+                    <option value="revenue">Выручка</option>
+                    <option value="hall_number">Номер зала</option>
+                </select><br>
+                <label>Порядок:</label><br>
+                <select name="order">
+                    <option value="DESC">Убывание</option>
+                    <option value="ASC">Возрастание</option>
+                </select><br>
+                <br><button type="submit">Сформировать</button>
+            </form>
+        `;
+    } else if (method == 'getReport2') {
+        html = `
+            <h2>Отчёт 2: Популярность фильмов</h2>
+            <form id="reportForm">
+                <label>Жанр:</label><br>
+                <input type="text" name="genre" placeholder="Например: Комедия"><br>
+                <label>Минимальное количество билетов:</label><br>
+                <input type="number" name="min_tickets" value="0"><br>
+                <label>Сортировать по:</label><br>
+                <select name="sort">
+                    <option value="tickets_sold">Количество билетов</option>
+                    <option value="revenue">Выручка</option>
+                    <option value="title">Название</option>
+                </select><br>
+                <label>Порядок:</label><br>
+                <select name="order">
+                    <option value="DESC">Убывание</option>
+                    <option value="ASC">Возрастание</option>
+                </select><br>
+                <br><button type="submit">Сформировать</button>
+            </form>
+        `;
+    } else if (method == 'getReport3') {
+        html = `
+            <h2>Отчёт 3: Кассовые сборы по дням</h2>
+            <form id="reportForm">
+                <label>Дата с:</label><br>
+                <input type="date" name="date_from" value="${getDefaultDateFrom()}"><br>
+                <label>Дата по:</label><br>
+                <input type="date" name="date_to" value="${getToday()}"><br>
+                <label>Сортировать по:</label><br>
+                <select name="sort">
+                    <option value="purchase_date">Дата</option>
+                    <option value="daily_revenue">Выручка</option>
+                    <option value="tickets_count">Количество билетов</option>
+                </select><br>
+                <label>Порядок:</label><br>
+                <select name="order">
+                    <option value="ASC">Возрастание</option>
+                    <option value="DESC">Убывание</option>
+                </select><br>
+                <br><button type="submit">Сформировать</button>
+            </form>
+        `;
+    }
+
+    modalBody.innerHTML = html;
+    modal.style.display = 'block';
+    document.getElementById('reportForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        let params = `action=${method}`;
+        const formData = new FormData(e.target);
+
+        for (let [key, val] of formData.entries()) {
+            params += `&${key}=${val}`;
+        }
+
+        const response = await fetch(`api.php?${params}`);
+        const result = await response.json();
+
+        if (result.success) {
+            displayReportResult(result);
+            modal.style.display = 'none';
+        } else {
+            alert('Ошибка: ' + result.message);
+        }
+    });
+}
+
+function displayReportResult(result) {
+    let html = `<h3>Результат отчёта</h3>`;
+
+    if (!result.data.length) {
+        html += '<p>Нет данных</p>';
+    } else {
+        const columns = Object.keys(result.data[0]);
+        html += '<table border="1"><thead><tr>';
+        for (let i = 0; i < columns.length; i++) {
+            html += `<th>${columns[i]}</th>`;
+        }
+        html += '</thead><tbody>';
+        for (let i = 0; i < result.data.length; i++) {
+            const row = result.data[i];
+            for (let j = 0; j < columns.length; j++) {
+                const col = columns[j];
+                html += `<td>${row[col] ?? ''}</td>`;
+            }
+            html += '</tr>';
+        }
+        html += '</tbody>';
+
+        if (result.totals) {
+            // Итоги выводятся в последнем столбце
+            html += `<tfoot><tr>`;
+            html += `<td><strong>Итого:</strong></td>`;
+            html += `<td><strong>${result.totals.tickets ?? ''}</strong></td>`;
+            html += `<td><strong>${result.totals.revenue}</strong></td>`;
+            html += `</tr></tfoot>`;
+        }
+        html += `</table>`;
+    }
+    document.getElementById('content').innerHTML = html;
 }
 
 let currentTable = 'Movies';
@@ -307,4 +445,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     loadTable();
+
+    const report1Btn = document.getElementById('btnReport1');
+    const report2Btn = document.getElementById('btnReport2');
+    const report3Btn = document.getElementById('btnReport3');
+
+    report1Btn.addEventListener('click', function() {
+        showReportForm('getReport1');
+    });
+    report2Btn.addEventListener('click', function() {
+        showReportForm('getReport2');
+    });
+    report3Btn.addEventListener('click', function() {
+        showReportForm('getReport3');
+    });
 });
