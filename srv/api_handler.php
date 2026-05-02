@@ -42,6 +42,10 @@ class ApiHandler {
                     return $this->getReport2();
                 case 'getReport3':
                     return $this->getReport3();
+                case 'getActiveMovies':
+                    return $this->getActiveMovies();
+                case 'getPopularMovies':
+                    return $this->getPopularMovies();
                 default:
                     throw new Exception("Неизвестный action: $action");
             }
@@ -359,6 +363,20 @@ class ApiHandler {
                 'revenue' => $totalRevenue
             ]
         ]);
+    }
+
+    private function getActiveMovies() {
+        $sql = "SELECT * FROM ActiveMovies";
+        $query = $this->db->query($sql);
+        $data = $query->fetchAll(PDO::FETCH_ASSOC);
+        return json_encode(['success' => true, 'data' => $data]);
+    }
+
+    private function getPopularMovies() {
+        $sql = "SELECT * FROM PopularMovies";
+        $query = $this->db->query($sql);
+        $data = $query->fetchAll(PDO::FETCH_ASSOC);
+        return json_encode(['success' => true, 'data' => $data]);
     }
 }
 

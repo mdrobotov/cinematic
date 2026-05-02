@@ -540,6 +540,62 @@ function displayReportResult(result) {
     document.getElementById('content').innerHTML = html;
 }
 
+async function loadActiveMovies() {
+    try {
+        const response = await fetch('api.php?action=getActiveMovies');
+        const result = await response.json();
+
+        if (result.success) {
+            displayViewResult(result.data, 'Активные фильмы');
+        } else {
+            document.getElementById('content').innerHTML = `<div class="error">Ошибка: ${result.message}</div>`;
+        }
+    } catch (e) {
+        document.getElementById('content').innerHTML = `<div class="error">Ошибка загрузки: ${e.message}</div>`;
+    }
+}
+
+async function loadPopularMovies() {
+    try {
+        const response = await fetch('api.php?action=getPopularMovies');
+        const result = await response.json();
+
+        if (result.success) {
+            displayViewResult(result.data, 'Популярные фильмы');
+        } else {
+            document.getElementById('content').innerHTML = `<div class="error">Ошибка: ${result.message}</div>`;
+        }
+    } catch (e) {
+        document.getElementById('content').innerHTML = `<div class="error">Ошибка загрузки: ${e.message}</div>`;
+    }
+}
+
+function displayViewResult(data, title) {
+    if (!data.length) {
+        document.getElementById('content').innerHTML = `<p>Нет данных</p>`;
+        return;
+    }
+
+    const columns = Object.keys(data[0]);
+    let html = `<h2>${title}</h2>`;
+    html += '<table border="1"><thead></tr>';
+    for (let i = 0; i < columns.length; i++) {
+        html += `<th>${columns[i]}</th>`;
+    }
+    html += '</thead><tbody>';
+    for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        html += '<tr>';
+        for (let j = 0; j < columns.length; j++) {
+            const col = columns[j];
+            html += `<td>${row[col] ?? ''}</td>`;
+        }
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
+    document.getElementById('content').innerHTML = html;
+}
+
 let currentTable = 'Movies';
 let currentPage = 1;
 let currentFilters = {};
@@ -572,6 +628,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const report1Btn = document.getElementById('btnReport1');
     const report2Btn = document.getElementById('btnReport2');
     const report3Btn = document.getElementById('btnReport3');
+    const activeMoviesBtn = document.getElementById('btnActiveMovies');
+    const popularMoviesBtn = document.getElementById('btnPopularMovies');
 
     report1Btn.addEventListener('click', function() {
         showReportForm('getReport1');
@@ -581,5 +639,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     report3Btn.addEventListener('click', function() {
         showReportForm('getReport3');
+    });
+    activeMoviesBtn.addEventListener('click', function() {
+        loadActiveMovies();
+    });
+    popularMoviesBtn.addEventListener('click', function() {
+        loadPopularMovies();
     });
 });
