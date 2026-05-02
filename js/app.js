@@ -78,11 +78,11 @@ function renderTable(data, total) {
     const columns = data.length ? Object.keys(data[0]) : [];
 
     let filterHtml = '<div class="filter-panel">';
-    filterHtml += '<h3>Фильтры и сортировка</h3>';
+    filterHtml += '<strong>Фильтры и сортировка</strong>';
     filterHtml += '<div class="filter-row">';
 
     if (!columns.length) {
-        filterHtml += '<div class="filter-item">Нет данных для фильтрации</div>';
+        filterHtml += '<p>Нет данных для фильтрации</p>';
     } else {
         for (let i = 0; i < columns.length; i++) {
             const col = columns[i];
@@ -165,18 +165,21 @@ function renderTable(data, total) {
 
     const limit = 10;
     const totalPages = Math.ceil(total / limit);
+
+    html += '<div class="pagination">';
+
     if (totalPages > 1) {
-        html += '<div class="pagination">';
         for (let i = 1; i <= totalPages; i++) {
             if (i == currentPage)
                 html += `<button disabled>${i}</button>`;
             else
                 html += `<button class="page-btn" data-page="${i}">${i}</button>`;
         }
-        html += '</div>';
     }
 
-    html += '<br><div><button id="addRecordBtn" class="add-btn">+ Добавить запись</button></div>';
+    html +=`
+        <button id="addRecordBtn" style="float: right;">+ Добавить запись</button>
+    </div>`;
     document.getElementById('content').innerHTML = html;
 
     const applyBtn = document.getElementById('applyFiltersBtn');
