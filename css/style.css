@@ -59,3 +59,35 @@ th, td {
 .close:hover {
     color: black;
 }
+.filter-panel {
+    background: #f5f5f5;
+    padding: 10px;
+    border-radius: 5px;
+}
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.filter-item {
+    display: flex;
+    flex-direction: column;
+    width: 150px;
+}
+.filter-item label {
+    font-size: 12px;
+    margin-bottom: 2px;
+}
+.filter-item input {
+    padding: 4px;
+}
+.sort-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.sort-row select, .sort-row button {
+    padding: 5px;
+}

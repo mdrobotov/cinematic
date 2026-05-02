@@ -1,11 +1,19 @@
 
 async function loadTable() {
-    const params = `action=getTableData&table=${currentTable}&page=${currentPage}&limit=10`;
+    let params = `action=getTableData&table=${currentTable}&page=${currentPage}&limit=10`;
+
+    if (currentSortColumn) {
+        params += `&sort=${currentSortColumn}`;
+        params += `&order=${currentSortOrder}`;
+    }
+
+    if (Object.keys(currentFilters).length > 0)
+        params += `&filters=${JSON.stringify(currentFilters)}`;
 
     try {
         const response = await fetch(`api.php?${params}`);
 
-        if (response.ok != true) {
+        if (!response.ok) {
             document.getElementById('content').innerHTML = `<div class="error">
                 Ошибка: статус сообщения ${response.status} - ${response.statusText}
             </div>`;
@@ -35,7 +43,45 @@ function renderTable(data, total) {
     }
 
     const columns = Object.keys(data[0]);
-    let html = '<table border="1"><thead><tr>';
+
+    // Построение панели фильтров и сортировки
+    let filterHtml = '<div class="filter-panel">';
+    filterHtml += '<h3>Фильтры и сортировка</h3>';
+    filterHtml += '<div class="filter-row">';
+    for (let i = 0; i < columns.length; i++) {
+        const col = columns[i];
+        filterHtml += `
+            <div class="filter-item">
+                <label>${col}:</label>
+                <input type="text" name="filter_${col}" placeholder="Поиск по ${col}" class="filter-input">
+            </div>
+        `;
+    }
+    filterHtml += '</div>';
+    filterHtml += `
+        <div class="sort-row">
+            <label>Сортировать по:</label>
+            <select id="sortColumn">
+                <option value="">-- без сортировки --</option>
+    `;
+    for (let i = 0; i < columns.length; i++) {
+        filterHtml += `<option value="${columns[i]}">${columns[i]}</option>`;
+    }
+    filterHtml += `
+            </select>
+            <label>Порядок:</label>
+            <select id="sortOrder">
+                <option value="ASC">По возрастанию</option>
+                <option value="DESC">По убыванию</option>
+            </select>
+            <button id="applyFiltersBtn">Применить фильтры и сортировку</button>
+            <button id="clearFiltersBtn">Сбросить все</button>
+        </div>
+    </div>
+    `;
+    
+    // Таблица с данными
+    let html = filterHtml + '<table border="1"><thead><tr>';
 
     for (let i = 0; i < columns.length; i++) {
         html += `<th>${columns[i]}</th>`;
@@ -74,6 +120,44 @@ function renderTable(data, total) {
     html += '<br><div><button id="addRecordBtn" class="add-btn">+ Добавить запись</button></div>';
     document.getElementById('content').innerHTML = html;
 
+    const applyBtn = document.getElementById('applyFiltersBtn');
+    const clearBtn = document.getElementById('clearFiltersBtn');
+
+    applyBtn.addEventListener('click', function() {
+        // Сохраняем фильтры
+        const filters = {};
+        document.querySelectorAll('.filter-input').forEach(function(input) {
+            const col = input.name.replace('filter_', '');
+            const val = input.value.trim();
+            if (val !== '')
+                filters[col] = val;
+        });
+        currentFilters = filters;
+
+        // Сохраняем сортировку
+        const sortCol = document.getElementById('sortColumn').value;
+        const sortOrd = document.getElementById('sortOrder').value;
+        currentSortColumn = sortCol;
+        currentSortOrder = sortOrd;
+
+        currentPage = 1;
+        loadTable();
+    });
+
+    clearBtn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-input').forEach(function(input) {
+            input.value = '';
+        });
+        document.getElementById('sortColumn').value = '';
+        document.getElementById('sortOrder').value = 'ASC';
+        currentFilters = {};
+        currentSortColumn = '';
+        currentSortOrder = 'ASC';
+        currentPage = 1;
+        loadTable();
+    });
+
+    // Пагинация
     const pageBtns = document.querySelectorAll('.page-btn');
     for (let i = 0; i < pageBtns.length; i++) {
         pageBtns[i].addEventListener('click', function() {
@@ -81,6 +165,8 @@ function renderTable(data, total) {
             loadTable();
         });
     }
+
+    // Редактирование / удаление
     const editBtns = document.querySelectorAll('.edit-btn');
     for (let i = 0; i < editBtns.length; i++) {
         editBtns[i].addEventListener('click', function() {
@@ -96,7 +182,8 @@ function renderTable(data, total) {
         });
     }
     const addBtn = document.getElementById('addRecordBtn');
-    if (addBtn) addBtn.addEventListener('click', function() { openAddForm(); });
+    if (addBtn)
+        addBtn.addEventListener('click', function() { openAddForm(); });
 }
 
 async function saveRecord(data, id = null) {
@@ -422,6 +509,9 @@ function displayReportResult(result) {
 
 let currentTable = 'Movies';
 let currentPage = 1;
+let currentFilters = {};
+let currentSortColumn = '';
+let currentSortOrder = 'ASC';
 
 const modal = document.getElementById('modal');
 const modalBody = document.getElementById('modal-body');
