@@ -36,27 +36,65 @@ async function loadTable() {
     }
 }
 
+function applyFiltersAndSort() {
+    const filters = {};
+    document.querySelectorAll('.filter-input').forEach(function(input) {
+        const col = input.name.replace('filter_', '');
+        const val = input.value.trim();
+        if (val !== '')
+            filters[col] = val;
+    });
+    currentFilters = filters;
+
+    const sortCol = document.getElementById('sortColumn').value;
+    const sortOrd = document.getElementById('sortOrder').value;
+    currentSortColumn = sortCol;
+    currentSortOrder = sortOrd;
+    currentPage = 1;
+
+    loadTable();
+}
+
+function clearAllFilters() {
+    document.querySelectorAll('.filter-input').forEach(function(input) {
+        input.value = '';
+    });
+    const sortSelect = document.getElementById('sortColumn');
+    if (sortSelect)
+        sortSelect.value = '';
+    const orderSelect = document.getElementById('sortOrder');
+    if (orderSelect)
+        orderSelect.value = 'ASC';
+
+    currentFilters = {};
+    currentSortColumn = '';
+    currentSortOrder = 'ASC';
+    currentPage = 1;
+
+    loadTable();
+}
+
 function renderTable(data, total) {
-    if (!data.length) {
-        document.getElementById('content').innerHTML = '<p>Нет данных</p>';
-        return;
-    }
+    const columns = data.length ? Object.keys(data[0]) : [];
 
-    const columns = Object.keys(data[0]);
-
-    // Построение панели фильтров и сортировки
     let filterHtml = '<div class="filter-panel">';
     filterHtml += '<h3>Фильтры и сортировка</h3>';
     filterHtml += '<div class="filter-row">';
-    for (let i = 0; i < columns.length; i++) {
-        const col = columns[i];
-        filterHtml += `
-            <div class="filter-item">
-                <label>${col}:</label>
-                <input type="text" name="filter_${col}" placeholder="Поиск по ${col}" class="filter-input">
-            </div>
-        `;
+
+    if (!columns.length) {
+        filterHtml += '<div class="filter-item">Нет данных для фильтрации</div>';
+    } else {
+        for (let i = 0; i < columns.length; i++) {
+            const col = columns[i];
+            filterHtml += `
+                <div class="filter-item">
+                    <label>${col}:</label>
+                    <input type="text" name="filter_${col}" placeholder="Поиск по ${col}" class="filter-input">
+                </div>
+            `;
+        }
     }
+
     filterHtml += '</div>';
     filterHtml += `
         <div class="sort-row">
@@ -64,9 +102,13 @@ function renderTable(data, total) {
             <select id="sortColumn">
                 <option value="">-- без сортировки --</option>
     `;
-    for (let i = 0; i < columns.length; i++) {
-        filterHtml += `<option value="${columns[i]}">${columns[i]}</option>`;
+
+    if (columns.length) {
+        for (let i = 0; i < columns.length; i++) {
+            filterHtml += `<option value="${columns[i]}">${columns[i]}</option>`;
+        }
     }
+
     filterHtml += `
             </select>
             <label>Порядок:</label>
@@ -74,15 +116,32 @@ function renderTable(data, total) {
                 <option value="ASC">По возрастанию</option>
                 <option value="DESC">По убыванию</option>
             </select>
-            <button id="applyFiltersBtn">Применить фильтры и сортировку</button>
+            <button id="applyFiltersBtn">Применить</button>
             <button id="clearFiltersBtn">Сбросить все</button>
         </div>
     </div>
     `;
-    
-    // Таблица с данными
-    let html = filterHtml + '<table border="1"><thead><tr>';
 
+    let html = filterHtml;
+
+    // Если данных нет
+    if (!data.length) {
+        html += '<p>Нет данных, удовлетворяющих условиям</p>';
+        document.getElementById('content').innerHTML = html;
+
+        const applyBtn = document.getElementById('applyFiltersBtn');
+        const clearBtn = document.getElementById('clearFiltersBtn');
+
+        if (applyBtn)
+            applyBtn.addEventListener('click', function() { applyFiltersAndSort(); });
+        if (clearBtn)
+            clearBtn.addEventListener('click', function() { clearAllFilters(); });
+
+        return;
+    }
+
+    // Если данные есть, строим таблицу
+    html += '<table border="1"><thead><tr>';
     for (let i = 0; i < columns.length; i++) {
         html += `<th>${columns[i]}</th>`;
     }
@@ -123,39 +182,10 @@ function renderTable(data, total) {
     const applyBtn = document.getElementById('applyFiltersBtn');
     const clearBtn = document.getElementById('clearFiltersBtn');
 
-    applyBtn.addEventListener('click', function() {
-        // Сохраняем фильтры
-        const filters = {};
-        document.querySelectorAll('.filter-input').forEach(function(input) {
-            const col = input.name.replace('filter_', '');
-            const val = input.value.trim();
-            if (val !== '')
-                filters[col] = val;
-        });
-        currentFilters = filters;
-
-        // Сохраняем сортировку
-        const sortCol = document.getElementById('sortColumn').value;
-        const sortOrd = document.getElementById('sortOrder').value;
-        currentSortColumn = sortCol;
-        currentSortOrder = sortOrd;
-
-        currentPage = 1;
-        loadTable();
-    });
-
-    clearBtn.addEventListener('click', function() {
-        document.querySelectorAll('.filter-input').forEach(function(input) {
-            input.value = '';
-        });
-        document.getElementById('sortColumn').value = '';
-        document.getElementById('sortOrder').value = 'ASC';
-        currentFilters = {};
-        currentSortColumn = '';
-        currentSortOrder = 'ASC';
-        currentPage = 1;
-        loadTable();
-    });
+    if (applyBtn)
+        applyBtn.addEventListener('click', function() { applyFiltersAndSort(); });
+    if (clearBtn)
+        clearBtn.addEventListener('click', function() { clearAllFilters(); });
 
     // Пагинация
     const pageBtns = document.querySelectorAll('.page-btn');
@@ -166,7 +196,7 @@ function renderTable(data, total) {
         });
     }
 
-    // Редактирование / удаление
+    // Редактирование
     const editBtns = document.querySelectorAll('.edit-btn');
     for (let i = 0; i < editBtns.length; i++) {
         editBtns[i].addEventListener('click', function() {
@@ -174,6 +204,8 @@ function renderTable(data, total) {
             openEditForm(id);
         });
     }
+
+    // Удаление
     const deleteBtns = document.querySelectorAll('.delete-btn');
     for (let i = 0; i < deleteBtns.length; i++) {
         deleteBtns[i].addEventListener('click', function() {
@@ -181,6 +213,7 @@ function renderTable(data, total) {
             deleteRecord(id);
         });
     }
+
     const addBtn = document.getElementById('addRecordBtn');
     if (addBtn)
         addBtn.addEventListener('click', function() { openAddForm(); });
